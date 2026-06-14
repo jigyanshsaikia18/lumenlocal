@@ -16,7 +16,15 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     # Postgres
+    # Privileged connection: migrations, admin, health. Owns the schema and (in dev)
+    # is a superuser, so it BYPASSES row-level security. Never use it for request handling.
     database_url: str = "postgresql+psycopg://lumen:lumen_dev_password@localhost:5432/lumenlocal"
+
+    # Application connection: a non-superuser role that IS subject to row-level security.
+    # Every tenant-scoped runtime query goes through this role (see app.db.session).
+    app_database_url: str = (
+        "postgresql+psycopg://lumen_app:lumen_app_dev_password@localhost:5432/lumenlocal"
+    )
 
     # Redis / Celery
     redis_url: str = "redis://localhost:6379/0"
