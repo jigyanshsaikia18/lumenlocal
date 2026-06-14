@@ -8,8 +8,14 @@ pure-Python unit suites), the migration is skipped with a warning rather than
 hard-failing the whole session — DB-backed tests then fail on their own queries,
 which keeps the signal clear instead of masking it.
 """
+import os
 import warnings
 from pathlib import Path
+
+# Set required env vars BEFORE any app module is imported during collection.
+# SECRET_KEY has no default (startup fails clearly without it); tests use this
+# insecure placeholder — it is never used for signing in production.
+os.environ.setdefault("SECRET_KEY", "test-only-insecure-do-not-use-in-production")
 
 import pytest
 from alembic import command
