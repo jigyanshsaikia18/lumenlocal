@@ -17,6 +17,8 @@ alembic = "^1.14.0"
 psycopg = { extras = ["binary"], version = "^3.2.0" }
 celery = "^5.4.0"
 redis = "^5.2.0"
+pyjwt = "^2.9.0"
+bcrypt = ">=5.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
