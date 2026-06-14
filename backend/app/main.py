@@ -17,7 +17,7 @@ from app.core.errors import install_error_handlers
 app = FastAPI(title="LumenLocal API", version="0.1.0")
 
 install_error_handlers(app)
-app.include_router(api_router)
+app.include_router(api_router, prefix="/api")
 
 
 def _check_postgres() -> str:
