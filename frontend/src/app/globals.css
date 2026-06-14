@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Default ("LumenLocal") brand theme. Values are RGB channel triplets so
+ * Tailwind's `rgb(var(--x) / <alpha-value>)` tokens can apply opacity.
+ * An agency white-label theme overrides any subset of these via
+ * <ThemeProvider theme={...}> (which sets the same vars inline).
+ */
+:root {
+  --ll-brand: 79 70 229;            /* indigo-600 */
+  --ll-brand-foreground: 255 255 255;
+  --ll-brand-soft: 238 242 255;     /* indigo-50  */
+  --ll-accent: 13 148 136;          /* teal-600   */
+  --ll-canvas: 248 250 252;         /* slate-50   */
+  --ll-surface: 255 255 255;
+  --ll-foreground: 15 23 42;        /* slate-900  */
+  --ll-muted: 100 116 139;          /* slate-500  */
+  --ll-hairline: 226 232 240;       /* slate-200  */
+  --ll-positive: 16 185 129;        /* emerald-500 */
+  --ll-negative: 244 63 94;         /* rose-500    */
+  --ll-font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background-color: rgb(var(--ll-canvas));
+  color: rgb(var(--ll-foreground));
+}
