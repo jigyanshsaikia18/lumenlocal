@@ -10,8 +10,6 @@ The golden values below were computed independently from the documented model
 For a 3×3 grid centered at (40.0, -75.0) with radius 1 mile (node spacing = 1
 mile) the rows are at +1/0/-1 mile north and the columns at -1/0/+1 mile east.
 """
-import math
-
 import pytest
 
 from app.geo.grid import DEG_PER_MILE_LAT, GridNode, compute_grid_nodes

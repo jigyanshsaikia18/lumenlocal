@@ -24,7 +24,7 @@ Rules enforced (each maps to a stable key in ``rulesets``):
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 
 from app.compliance.actions import ExternalWrite
