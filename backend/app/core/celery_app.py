@@ -1,8 +1,8 @@
 """Celery application wired to Redis (broker + result backend).
 
 The job framework (``app/jobs``) layers idempotency, per-tenant fairness and
-dead-lettering on top of this app via ``TenantTask``. Heavier task modules
-(geo-scan, sampling, reports) are added in later phases and listed in ``include``.
+dead-lettering on top of this app via ``TenantTask``. Heavier task modules are
+listed in ``include`` (geo-scan landed in P2B-1; sampling, reports follow).
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ celery_app = Celery(
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     # Register task modules so the worker discovers them at startup.
-    include=["app.jobs.example"],
+    include=["app.jobs.example", "app.jobs.geo_scan"],
 )
 
 celery_app.conf.update(
