@@ -22,25 +22,16 @@ from sqlalchemy.orm import Session
 from app.core import token_store
 from app.core.errors import APIError
 from app.core.security import decode_token
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.models.user import User, UserRole
 
 # auto_error=False lets us return 401 (not 403) when credentials are absent.
 _http_bearer = HTTPBearer(auto_error=False)
 
-
-def get_db():
-    """Yield a privileged (superuser) DB session for the duration of the request.
-
-    Login and auth-layer lookups use this session — they need to query users by
-    email or PK without a tenant context. Business endpoints in later tickets
-    use tenant_session() from db.session instead so RLS applies.
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Re-exported from app.db.session so existing imports (app.api.v1.deps.get_db) keep
+# working; the canonical definition lives in the DB layer to avoid an import cycle
+# with cross-cutting dependencies (e.g. the entitlement gateway).
+__all__ = ["get_db", "get_current_user", "CurrentUser"]
 
 
 def get_current_user(

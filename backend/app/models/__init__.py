@@ -1,3 +1,4 @@
+from app.models.audit import AuditLog
 from app.models.client import Client
 from app.models.compliance import ComplianceEvent, PolicyRuleset
 from app.models.feature import ClientFeature, Feature, LocationFeature, PlanFeature
@@ -9,6 +10,7 @@ from app.models.tenant import Tenant
 from app.models.user import RolePermission, User, UserRole
 
 __all__ = [
+    "AuditLog",
     "Client",
     "ClientFeature",
     "ComplianceEvent",

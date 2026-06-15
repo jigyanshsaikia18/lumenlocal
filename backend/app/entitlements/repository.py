@@ -27,6 +27,8 @@ class OverrideStore(Protocol):
 
     def plan_id_for_client(self, client_id: UUID) -> UUID | None: ...
 
+    def client_id_for_location(self, location_id: UUID | None) -> UUID | None: ...
+
     def plan_overrides(self, plan_id: UUID | None) -> dict[str, bool]: ...
 
     def client_overrides(self, client_id: UUID) -> dict[str, bool]: ...
@@ -68,6 +70,15 @@ class SqlAlchemyOverrideStore:
             {"cid": client_id},
         ).scalar_one_or_none()
 
+    def client_id_for_location(self, location_id: UUID | None) -> UUID | None:
+        """Owning client of a location — used to resolve scope on location-only routes."""
+        if location_id is None:
+            return None
+        return self._session.execute(
+            text("SELECT client_id FROM locations WHERE id = :lid"),
+            {"lid": location_id},
+        ).scalar_one_or_none()
+
     def _overrides(self, table: str, scope_id: UUID | None) -> dict[str, bool]:
         if scope_id is None:
             return {}
@@ -93,6 +104,10 @@ class EntitlementService:
     def __init__(self, store: OverrideStore) -> None:
         self._store = store
 
+    def registry(self) -> list[FeatureDef]:
+        """The feature registry (for write-path dependency validation + GET /features)."""
+        return self._store.feature_registry()
+
     def resolve(
         self, client_id: UUID, location_id: UUID | None = None
     ) -> dict[str, ResolvedFeature]:
@@ -112,6 +127,10 @@ class EntitlementService:
         resolved = self.resolve(client_id, location_id)
         rf = resolved.get(feature_key)
         return bool(rf and rf.enabled)
+
+    def client_id_for_location(self, location_id: UUID | None) -> UUID | None:
+        """Resolve a location's owning client (delegates to the store)."""
+        return self._store.client_id_for_location(location_id)
 
 
 # Help static checkers confirm the concrete store satisfies the Protocol.

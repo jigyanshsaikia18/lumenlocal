@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
 
+    # ── Entitlements (the toggle engine) ──────────────────────────────────────
+    # How long the API gateway caches a client's resolved feature set before
+    # re-reading the override tables. A toggle change therefore takes effect within
+    # this window without a deploy (PRD §5 FT-2: "effect in < 1 minute"). Keep it
+    # short; the override tables are cheap to read. The writer also invalidates the
+    # local cache on change for instant effect on the node that served the toggle.
+    entitlement_cache_ttl_seconds: int = 30
+
     # ── PostgreSQL ────────────────────────────────────────────────────────────
     # Privileged connection: migrations, admin, health. Owns the schema and (in dev)
     # is a superuser, so it BYPASSES row-level security. Never use it for request handling.

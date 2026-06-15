@@ -21,6 +21,20 @@ AppSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=app_engin
 TENANT_GUC = "app.current_tenant"
 
 
+def get_db() -> Iterator[Session]:
+    """Yield a privileged (superuser) DB session for the duration of a request.
+
+    Lives here (not in the API layer) so cross-cutting dependencies — auth, the
+    entitlement gateway — can import it without pulling in the v1 router package and
+    creating an import cycle. Business handlers needing RLS use ``tenant_session()``.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def set_tenant(session: Session, tenant_id: UUID | str) -> None:
     """Bind the current transaction to a tenant for row-level security.
 
