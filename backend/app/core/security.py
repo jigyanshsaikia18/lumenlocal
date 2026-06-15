@@ -51,6 +51,14 @@ def create_refresh_token(user_id: str, tenant_id: str) -> str:
     )
 
 
+def create_mfa_token(user_id: str, tenant_id: str) -> str:
+    """Short-lived token issued when 2FA is required; exchanged via /auth/mfa/verify."""
+    return _encode(
+        {"sub": user_id, "tenant_id": tenant_id, "type": "mfa_pending"},
+        timedelta(minutes=5),
+    )
+
+
 def decode_token(token: str) -> dict:
     """Decode and verify a JWT. Raises jwt.InvalidTokenError on any failure."""
     return jwt.decode(

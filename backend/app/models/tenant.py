@@ -26,6 +26,9 @@ class Tenant(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'active'")
     )
+    sso_config: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=False), server_default=text("CURRENT_TIMESTAMP")
     )
