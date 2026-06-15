@@ -7,6 +7,7 @@ from app.models.geogrid import GeogridScan
 from app.models.location import Location
 from app.models.plan import Plan
 from app.models.protection import ProfileChangeEvent
+from app.models.rank import KeywordRankResult, KeywordRankSchedule
 from app.models.tenant import Tenant
 from app.models.usage import UsageCounter, UsageQuota
 from app.models.user import RolePermission, User, UserRole
@@ -19,6 +20,8 @@ __all__ = [
     "Feature",
     "GbpConnection",
     "GeogridScan",
+    "KeywordRankResult",
+    "KeywordRankSchedule",
     "Location",
     "LocationFeature",
     "Plan",

@@ -112,6 +112,10 @@ class Settings(BaseSettings):
     token_expiry_warning_days: int = 7
     token_health_check_interval_seconds: int = 3600  # 1 hour
 
+    # ── Keyword rank dispatch (P2B-2) ──────────────────────────────────────────
+    # How often the beat task sweeps for due keyword rank schedules.
+    keyword_rank_dispatch_interval_seconds: int = 3600  # 1 hour
+
 
 @lru_cache
 def get_settings() -> Settings:

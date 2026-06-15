@@ -15,7 +15,13 @@ celery_app = Celery(
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     # Register task modules so the worker discovers them at startup.
-    include=["app.jobs.example", "app.jobs.geo_scan", "app.jobs.token_health"],
+    include=[
+        "app.jobs.example",
+        "app.jobs.geo_scan",
+        "app.jobs.token_health",
+        "app.jobs.keyword_rank_scan",
+        "app.jobs.keyword_rank_dispatch",
+    ],
 )
 
 celery_app.conf.update(
@@ -34,6 +40,10 @@ celery_app.conf.update(
         "token-health-check": {
             "task": "token_health.check",
             "schedule": settings.token_health_check_interval_seconds,
+        },
+        "keyword-rank-dispatch": {
+            "task": "keyword_rank.dispatch",
+            "schedule": settings.keyword_rank_dispatch_interval_seconds,
         },
     },
 )

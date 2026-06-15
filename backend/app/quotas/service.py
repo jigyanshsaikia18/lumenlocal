@@ -41,8 +41,15 @@ METRIC_GOOGLE_API_CALLS = "google_api_calls"
 METRIC_GEOGRID_SCANS = "geogrid_scans"
 METRIC_AI_SCANS = "ai_scans"
 METRIC_LLM_CREDITS = "llm_credits"
+METRIC_KEYWORD_RANK_SCANS = "keyword_rank_scans"
 METERED_METRICS: frozenset[str] = frozenset(
-    {METRIC_GOOGLE_API_CALLS, METRIC_GEOGRID_SCANS, METRIC_AI_SCANS, METRIC_LLM_CREDITS}
+    {
+        METRIC_GOOGLE_API_CALLS,
+        METRIC_GEOGRID_SCANS,
+        METRIC_AI_SCANS,
+        METRIC_LLM_CREDITS,
+        METRIC_KEYWORD_RANK_SCANS,
+    }
 )
 
 # --- Cap scope (schema §3: caps apply per tenant or per client) -----------------
