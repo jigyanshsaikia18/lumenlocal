@@ -59,23 +59,31 @@ def create_mfa_token(user_id: str, tenant_id: str) -> str:
     )
 
 
-def create_oauth_state(tenant_id: str, client_id: str, connect_method: str) -> str:
-    """Signed, short-lived OAuth ``state`` for the GBP connect flow (P1D-1).
+def create_oauth_state(
+    tenant_id: str,
+    client_id: str,
+    connect_method: str,
+    agency_gbp_project_id: str | None = None,
+) -> str:
+    """Signed, short-lived OAuth ``state`` for the GBP connect flow (P1D-1/P1D-2).
 
     Carries the scope the operator started from (tenant + client + connect method)
     so the unauthenticated Google redirect to ``/connections/oauth/callback`` can be
     bound back to it. Because it is a signed JWT, a tampered or forged ``state`` fails
     verification — this is the flow's CSRF protection, not just a nonce.
+
+    For agency-proxy flows ``agency_gbp_project_id`` is embedded so the callback
+    can persist it as proof the project-ownership rule was honoured (PRD §6.3 ON-5).
     """
-    return _encode(
-        {
-            "tenant_id": tenant_id,
-            "client_id": client_id,
-            "connect_method": connect_method,
-            "type": "oauth_state",
-        },
-        timedelta(minutes=15),
-    )
+    payload: dict = {
+        "tenant_id": tenant_id,
+        "client_id": client_id,
+        "connect_method": connect_method,
+        "type": "oauth_state",
+    }
+    if agency_gbp_project_id is not None:
+        payload["agency_gbp_project_id"] = agency_gbp_project_id
+    return _encode(payload, timedelta(minutes=15))
 
 
 def decode_token(token: str) -> dict:

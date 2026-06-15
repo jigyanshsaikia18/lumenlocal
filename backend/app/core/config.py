@@ -95,6 +95,12 @@ class Settings(BaseSettings):
     google_oauth_client_secret: str = ""
     google_oauth_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
 
+    # The platform's own GBP project ID (set in production).  The project-
+    # ownership guard (PRD §6.3 ON-5 / PRD §9.1 rule 5) rejects any agency
+    # proxy request that supplies this value — each agency must operate under
+    # their own Google-approved project.
+    platform_gbp_project_id: str = ""
+
     # ── Token Vault ───────────────────────────────────────────────────────────
     # URL of the secret store (HashiCorp Vault, AWS Secrets Manager, etc.).
     # Leave empty in local dev to use the in-memory LocalDevVault stub (app/core/vault.py).

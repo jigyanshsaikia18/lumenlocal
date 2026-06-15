@@ -31,6 +31,10 @@ class GbpConnection(Base):
     )
     # self_serve (client connects) | agency_proxy (agency-on-behalf) — PRD §6.
     connect_method: Mapped[str] = mapped_column(String(20), nullable=False)
+    # For agency_proxy connections: the agency's own Google-approved GBP project
+    # ID, stored as evidence that the project-ownership rule was honoured at
+    # connect time (PRD §6.3 ON-5 / PRD §9.1 rule 5).  NULL for self-serve.
+    agency_gbp_project_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Opaque vault pointer — NEVER the raw token (CLAUDE.md hard rule).
     token_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     scopes: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
