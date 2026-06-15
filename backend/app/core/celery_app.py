@@ -15,7 +15,7 @@ celery_app = Celery(
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     # Register task modules so the worker discovers them at startup.
-    include=["app.jobs.example", "app.jobs.geo_scan"],
+    include=["app.jobs.example", "app.jobs.geo_scan", "app.jobs.token_health"],
 )
 
 celery_app.conf.update(
@@ -28,4 +28,12 @@ celery_app.conf.update(
     # tenant's backlog and the cooperative gate in app/jobs/fairness.py stays honest.
     worker_prefetch_multiplier=1,
     task_acks_late=True,
+    # Periodic tasks (beat schedule). token_health.check runs on a fixed interval
+    # and is not tenant-scoped — it sweeps all connections as a platform system job.
+    beat_schedule={
+        "token-health-check": {
+            "task": "token_health.check",
+            "schedule": settings.token_health_check_interval_seconds,
+        },
+    },
 )

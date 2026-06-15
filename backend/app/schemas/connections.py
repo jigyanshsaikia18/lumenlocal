@@ -129,3 +129,19 @@ class CsvImportResponse(BaseModel):
     client_id: UUID
     imported_count: int = Field(ge=0)
     locations: list[ImportedLocationOut]
+
+
+# ── Connection health (P1D-3) ─────────────────────────────────────────────────
+
+class ConnectionHealthOut(BaseModel):
+    """Response for ``GET /connections/{id}/health`` (API spec §5).
+
+    Surfaces token status, expiry metadata, and a ``reauth_url`` the caller
+    can follow to re-connect the client — intentionally no token material.
+    """
+
+    connection_id: UUID
+    token_status: str       # healthy | expiring | disconnected
+    expires_at: datetime | None
+    scopes: list[str]
+    reauth_url: str

@@ -17,16 +17,19 @@ without Postgres, the vault, or Google.
 """
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.connections.repository import SqlAlchemyConnectionStore
-from app.connections.service import ConnectionService
+from app.connections.service import ConnectionService, CsvRow
+from app.core.config import settings
 from app.core.vault import get_vault
 from app.db.session import get_db
 from app.gbp.oauth import get_gbp_client
-from app.connections.service import CsvRow
 from app.schemas.connections import (
+    ConnectionHealthOut,
     ConnectionOut,
     ConnectionStartRequest,
     ConnectionStartResponse,
@@ -90,6 +93,28 @@ def proxy_connect(
         ctx.tenant_id, body.client_id, body.agency_gbp_project_id
     )
     return ProxyConnectResponse(guided_link=result.consent_url, state=result.state)
+
+
+@router.get("/connections/{connection_id}/health", response_model=ConnectionHealthOut)
+def get_connection_health(
+    connection_id: UUID,
+    ctx: RequestContext = Depends(require("connections.read")),
+    service: ConnectionService = Depends(get_connection_service),
+) -> ConnectionHealthOut:
+    """Return token status, expiry, scopes and a re-auth URL for a connection.
+
+    Tenant-scoped: a connection owned by another tenant is indistinguishable
+    from a non-existent one (returns 404).
+    """
+    conn = service.get_health(ctx.tenant_id, connection_id)
+    reauth_url = f"{settings.frontend_url}/connections/{connection_id}/reauth"
+    return ConnectionHealthOut(
+        connection_id=conn.id,
+        token_status=conn.token_status,
+        expires_at=conn.expires_at,
+        scopes=list(conn.scopes),
+        reauth_url=reauth_url,
+    )
 
 
 @router.post("/locations/import", response_model=ImportLocationsResponse)

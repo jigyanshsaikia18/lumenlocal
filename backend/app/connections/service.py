@@ -183,6 +183,16 @@ class ConnectionService:
             imported.append(location)
         return imported
 
+    # -- step 3b: connection health (P1D-3) ------------------------------------
+    def get_health(self, tenant_id: UUID, connection_id: UUID) -> GbpConnection:
+        """Return a connection the caller owns; 404 for unknown or cross-tenant ids."""
+        connection = self._store.get_connection(connection_id)
+        if connection is None:
+            raise APIError(404, "connection_not_found", "Connection not found")
+        if self._store.tenant_id_for_client(connection.client_id) != tenant_id:
+            raise APIError(404, "connection_not_found", "Connection not found")
+        return connection
+
     # -- step 4: CSV / batch import (P1D-2) ------------------------------------
     def import_from_csv(
         self,

@@ -107,6 +107,11 @@ class Settings(BaseSettings):
     vault_url: str = ""
     vault_kv_path: str = "secret/lumenlocal"
 
+    # ── Token health monitor (P1D-3) ──────────────────────────────────────────
+    # Alert when a token expires within this many days; worker runs on a beat schedule.
+    token_expiry_warning_days: int = 7
+    token_health_check_interval_seconds: int = 3600  # 1 hour
+
 
 @lru_cache
 def get_settings() -> Settings:
