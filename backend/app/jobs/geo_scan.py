@@ -8,10 +8,18 @@ It rides the P2A-1 job framework (``base=TenantTask``): tenant-fair, idempotent,
 retried and dead-lettered. All persistence goes through ``tenant_session`` so the
 read of the location and the write of the scan are constrained to the owning
 tenant by row-level security, not convention.
+
+Geo-grid scanning is a **metered** operation (PRD §5 FT-9): before doing any work
+the task consumes one ``geogrid_scans`` unit against the tenant's Super-Admin cap.
+If the cap is hit the task **pauses gracefully** — it returns a ``paused`` envelope
+and lets the quota service fire the operator alert, rather than raising (which would
+autoretry and dead-letter, i.e. error-storm). The counter increment and the scan
+write share the one ``tenant_session`` transaction, so usage is consistent with work.
 """
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from app.core.celery_app import celery_app
 from app.db.session import tenant_session
@@ -19,8 +27,23 @@ from app.geo.scan import build_matrix
 from app.jobs.base import TENANT_TASK_OPTIONS, TenantTask
 from app.models.geogrid import GeogridScan
 from app.models.location import Location
+from app.quotas.service import (
+    METRIC_GEOGRID_SCANS,
+    SCOPE_TENANT,
+    QuotaService,
+    SqlAlchemyQuotaStore,
+)
 
 _OPTS: dict[str, Any] = {**TENANT_TASK_OPTIONS, "base": TenantTask}
+
+
+def quota_service(session: Any) -> QuotaService:
+    """Build the metering service over the worker's tenant session.
+
+    A seam so tests can drive the cap without Postgres (monkeypatch this name);
+    in production it wraps the live ``usage_quotas`` / ``usage_counters`` tables.
+    """
+    return QuotaService(SqlAlchemyQuotaStore(session))
 
 
 @celery_app.task(**_OPTS)
@@ -43,12 +66,31 @@ def run_geogrid_scan(  # noqa: ANN001 - `self` injected by bind=True
         radius_miles: Distance from the centroid to the grid edge.
 
     Returns:
-        ``{"scan_id", "location_id", "node_count", "solv"}``.
+        On success ``{"status": "ok", "scan_id", "location_id", "node_count", "solv"}``;
+        when the tenant's ``geogrid_scans`` cap is hit,
+        ``{"status": "paused", "reason": "quota_exceeded", "metric", "used", "limit"}``
+        (no scan is run and the op does not retry).
 
     Raises:
         ValueError: if the location is unknown to this tenant or has no coordinates.
     """
     with tenant_session(tenant_id) as session:
+        # Step 4 of the §12 chain for a metered job: consume against the cap first.
+        # A hit pauses gracefully (alert fired by the service); we do not raise, so
+        # the framework neither retries nor dead-letters this — no error-storm.
+        decision = quota_service(session).consume(
+            SCOPE_TENANT, UUID(str(tenant_id)), METRIC_GEOGRID_SCANS
+        )
+        if not decision.allowed:
+            return {
+                "status": "paused",
+                "reason": "quota_exceeded",
+                "metric": decision.metric,
+                "location_id": location_id,
+                "used": decision.used,
+                "limit": decision.limit,
+            }
+
         location = session.get(Location, location_id)
         if location is None:
             # RLS hides other tenants' locations, so "not found" is the right signal.
@@ -76,6 +118,7 @@ def run_geogrid_scan(  # noqa: ANN001 - `self` injected by bind=True
         scan_id = str(scan.id)
 
     return {
+        "status": "ok",
         "scan_id": scan_id,
         "location_id": location_id,
         "node_count": len(matrix),

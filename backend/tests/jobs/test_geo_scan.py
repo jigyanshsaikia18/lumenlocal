@@ -12,6 +12,8 @@ from uuid import uuid4
 import pytest
 
 from app.jobs import geo_scan
+from app.quotas.service import QuotaService
+from tests.quotas.fakes import FakeQuotaStore
 
 
 class _FakeSession:
@@ -36,7 +38,12 @@ class _FakeSession:
 
 @pytest.fixture
 def fake_tenant_session(monkeypatch):
-    """Patch geo_scan.tenant_session to yield a configurable fake session."""
+    """Patch geo_scan.tenant_session to yield a configurable fake session.
+
+    Also installs an *uncapped* in-memory quota service so the metering gate
+    (P1C-4) lets the scan proceed; tests that exercise the cap itself live in
+    test_geo_scan_quota.py.
+    """
 
     holder = {}
 
@@ -50,9 +57,17 @@ def fake_tenant_session(monkeypatch):
             yield session
 
         monkeypatch.setattr(geo_scan, "tenant_session", _fake)
+        monkeypatch.setattr(
+            geo_scan, "quota_service", lambda _session: QuotaService(FakeQuotaStore())
+        )
         return holder
 
     return _install
+
+
+# Real UUIDs: tenant_id is tenants.id, and the metering gate parses it as a UUID.
+TENANT_1 = "11111111-1111-1111-1111-111111111111"
+TENANT_9 = "99999999-9999-9999-9999-999999999999"
 
 
 def _location(lat=40.0, lon=-75.0):
@@ -64,7 +79,7 @@ def test_scan_persists_one_row_and_returns_envelope(fake_tenant_session):
     holder = fake_tenant_session(loc)
 
     result = geo_scan.run_geogrid_scan.delay(
-        tenant_id="t1",
+        tenant_id=TENANT_1,
         location_id=str(loc.id),
         search_term="pizza",
         grid_dimensions=5,
@@ -80,7 +95,7 @@ def test_scan_persists_one_row_and_returns_envelope(fake_tenant_session):
     assert 0.0 <= float(scan.solv) <= 100.0
 
     # The session was scoped to the caller's tenant.
-    assert holder["tenant_id"] == "t1"
+    assert holder["tenant_id"] == TENANT_1
 
     # Envelope mirrors the persisted row.
     assert result["node_count"] == 25
@@ -92,7 +107,7 @@ def test_missing_location_dead_letters(fake_tenant_session):
     fake_tenant_session(None)  # session.get returns None → ValueError in the body
 
     res = geo_scan.run_geogrid_scan.delay(
-        tenant_id="t9",
+        tenant_id=TENANT_9,
         location_id=str(uuid4()),
         search_term="pizza",
         grid_dimensions=3,
@@ -107,14 +122,14 @@ def test_missing_location_dead_letters(fake_tenant_session):
     parked = dead_letter.read(get_store())
     assert len(parked) == 1
     assert parked[0]["task_name"].endswith("geo_scan.run_geogrid_scan")
-    assert parked[0]["tenant_id"] == "t9"
+    assert parked[0]["tenant_id"] == TENANT_9
 
 
 def test_location_without_coordinates_errors(fake_tenant_session):
     fake_tenant_session(_location(lat=None, lon=None))
 
     res = geo_scan.run_geogrid_scan.delay(
-        tenant_id="t1",
+        tenant_id=TENANT_1,
         location_id=str(uuid4()),
         search_term="pizza",
         grid_dimensions=3,
