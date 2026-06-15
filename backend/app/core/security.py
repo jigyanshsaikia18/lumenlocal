@@ -59,6 +59,25 @@ def create_mfa_token(user_id: str, tenant_id: str) -> str:
     )
 
 
+def create_oauth_state(tenant_id: str, client_id: str, connect_method: str) -> str:
+    """Signed, short-lived OAuth ``state`` for the GBP connect flow (P1D-1).
+
+    Carries the scope the operator started from (tenant + client + connect method)
+    so the unauthenticated Google redirect to ``/connections/oauth/callback`` can be
+    bound back to it. Because it is a signed JWT, a tampered or forged ``state`` fails
+    verification — this is the flow's CSRF protection, not just a nonce.
+    """
+    return _encode(
+        {
+            "tenant_id": tenant_id,
+            "client_id": client_id,
+            "connect_method": connect_method,
+            "type": "oauth_state",
+        },
+        timedelta(minutes=15),
+    )
+
+
 def decode_token(token: str) -> dict:
     """Decode and verify a JWT. Raises jwt.InvalidTokenError on any failure."""
     return jwt.decode(

@@ -1,6 +1,7 @@
 from app.models.audit import AuditLog
 from app.models.client import Client
 from app.models.compliance import ComplianceEvent, PolicyRuleset
+from app.models.connection import GbpConnection
 from app.models.feature import ClientFeature, Feature, LocationFeature, PlanFeature
 from app.models.geogrid import GeogridScan
 from app.models.location import Location
@@ -16,6 +17,7 @@ __all__ = [
     "ClientFeature",
     "ComplianceEvent",
     "Feature",
+    "GbpConnection",
     "GeogridScan",
     "Location",
     "LocationFeature",
