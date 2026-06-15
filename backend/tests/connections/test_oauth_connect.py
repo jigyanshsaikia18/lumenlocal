@@ -161,7 +161,7 @@ def test_callback_rejects_wrong_token_type_400():
 # --- locations import ----------------------------------------------------------
 def test_import_locations_creates_rows_tenant_scoped():
     env = _env()
-    body = _connect(env)
+    _connect(env)
     conn_id = next(iter(env["store"].connections))
 
     resp = env["client"].post(

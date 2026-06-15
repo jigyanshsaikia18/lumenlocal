@@ -166,10 +166,10 @@ def test_command_center_rollup_equals_location_sum():
     client = TestClient(_build_app(_DATA, feature_enabled=True))
     body = client.get(f"/clients/{CLIENT_ID}/command-center").json()
     locs = body["locations"]
-    assert body["rollup"]["views"] == sum(l["kpis"]["views"] for l in locs)
-    assert body["rollup"]["calls"] == sum(l["kpis"]["calls"] for l in locs)
-    assert body["rollup"]["directions"] == sum(l["kpis"]["directions"] for l in locs)
-    assert body["rollup"]["website_clicks"] == sum(l["kpis"]["website_clicks"] for l in locs)
+    assert body["rollup"]["views"] == sum(loc["kpis"]["views"] for loc in locs)
+    assert body["rollup"]["calls"] == sum(loc["kpis"]["calls"] for loc in locs)
+    assert body["rollup"]["directions"] == sum(loc["kpis"]["directions"] for loc in locs)
+    assert body["rollup"]["website_clicks"] == sum(loc["kpis"]["website_clicks"] for loc in locs)
 
 
 def test_disabled_feature_returns_403_feature_disabled():

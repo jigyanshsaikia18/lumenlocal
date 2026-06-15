@@ -15,7 +15,6 @@ from app.quotas.service import (
     METRIC_GEOGRID_SCANS,
     SCOPE_TENANT,
     ON_EXCEED_PAUSE,
-    Quota,
     QuotaService,
 )
 from tests.quotas.fakes import FakeQuotaStore

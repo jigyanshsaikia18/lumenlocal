@@ -11,13 +11,21 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine, text
 
 from app.api.v1 import api_router
+from app.api.v1.deps import build_request_context
 from app.core.config import settings
 from app.core.errors import install_error_handlers
+from app.security.deps import get_request_context
 
 app = FastAPI(title="LumenLocal API", version="0.1.0")
 
 install_error_handlers(app)
 app.include_router(api_router, prefix="/api")
+
+# Wire the RBAC principal seam (app.security.deps.get_request_context) to real JWT
+# auth. The seam is a placeholder that 401s until bound here; without this every
+# require(...)-gated route is unreachable even with a valid token. Tests override
+# the same key with a fake principal, so this binding is production-only.
+app.dependency_overrides[get_request_context] = build_request_context
 
 
 def _check_postgres() -> str:

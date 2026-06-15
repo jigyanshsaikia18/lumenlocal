@@ -103,7 +103,7 @@ def test_healthy_token_with_no_expiry_is_untouched():
     conn = _make_conn(expires_at=None, token_status="healthy")
     sink = InMemoryAlertSink()
 
-    result = scan_connections(FakeSession([conn]), sink)
+    scan_connections(FakeSession([conn]), sink)
 
     assert conn.token_status == "healthy"
     assert len(sink.alerts) == 0

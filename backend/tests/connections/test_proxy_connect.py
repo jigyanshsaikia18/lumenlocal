@@ -15,7 +15,7 @@ import asyncio
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
-from app.core.security import create_oauth_state, decode_token
+from app.core.security import decode_token
 from app.gbp.oauth import OAuthToken
 from app.security.context import RequestContext, RoleAssignment
 from tests.connections.fakes import build_env

@@ -23,7 +23,8 @@ from app.core import token_store
 from app.core.errors import APIError
 from app.core.security import decode_token
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import RolePermission, User, UserRole
+from app.security.context import RequestContext, RoleAssignment
 
 # auto_error=False lets us return 401 (not 403) when credentials are absent.
 _http_bearer = HTTPBearer(auto_error=False)
@@ -31,7 +32,12 @@ _http_bearer = HTTPBearer(auto_error=False)
 # Re-exported from app.db.session so existing imports (app.api.v1.deps.get_db) keep
 # working; the canonical definition lives in the DB layer to avoid an import cycle
 # with cross-cutting dependencies (e.g. the entitlement gateway).
-__all__ = ["get_db", "get_current_user", "CurrentUser"]
+__all__ = [
+    "get_db",
+    "get_current_user",
+    "build_request_context",
+    "CurrentUser",
+]
 
 
 def get_current_user(
@@ -76,3 +82,49 @@ def get_current_user(
 
 
 CurrentUser = Annotated[tuple[User, list[UserRole]], Depends(get_current_user)]
+
+
+def build_request_context(
+    principal: CurrentUser,
+    db: Session = Depends(get_db),
+) -> RequestContext:
+    """Bridge JWT auth (step 1) into the RBAC principal the chain consumes (step 2).
+
+    This is the production implementation of the ``get_request_context`` seam in
+    ``app.security.deps``. ``main.py`` wires it via ``dependency_overrides`` so that
+    every ``require(...)``-gated route resolves a real principal from the bearer
+    token — exactly as tests supply a fake one. Without this wiring the seam raises
+    401 unconditionally and the entire RBAC-gated surface is unreachable.
+
+    Custom-role grants (RBAC-3) are merged in from ``role_permissions`` so a user's
+    capabilities are the union of built-in role bundles plus any custom permissions.
+    """
+    user, roles = principal
+
+    # Pull custom-role permissions for exactly the roles this user holds, in one
+    # query, then attach them per assignment (built-in roles simply have none).
+    role_names = {r.role for r in roles}
+    perms_by_role: dict[str, set[str]] = {}
+    if role_names:
+        rows = db.execute(
+            select(RolePermission.role, RolePermission.permission).where(
+                RolePermission.role.in_(role_names)
+            )
+        ).all()
+        for role_name, permission in rows:
+            perms_by_role.setdefault(role_name, set()).add(permission)
+
+    assignments = tuple(
+        RoleAssignment(
+            role=r.role,
+            scope_type=r.scope_type,
+            scope_id=r.scope_id,
+            permissions=frozenset(perms_by_role.get(r.role, ())),
+        )
+        for r in roles
+    )
+    return RequestContext(
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        roles=assignments,
+    )
