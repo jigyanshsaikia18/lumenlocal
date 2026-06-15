@@ -1,7 +1,8 @@
 /**
  * Dashboard data contracts (PRD §7 Module 1). Shapes mirror the responses of
- * `GET /locations/{id}/health-score` (D-1) and
- * `GET /locations/{id}/performance` (D-2).
+ * `GET /locations/{id}/health-score` (D-1),
+ * `GET /locations/{id}/performance` (D-2), and
+ * `GET /clients/{id}/command-center` (D-3).
  */
 
 export type GapSeverity = "high" | "medium" | "low";
@@ -45,4 +46,36 @@ export interface PerformanceSummary {
   period: PerformancePeriod;
   comparisonPeriod: PerformancePeriod;
   metrics: PerformanceMetric[];
+}
+
+// ---------------------------------------------------------------------------
+// Command center (D-3) — multi-location roll-up
+// ---------------------------------------------------------------------------
+
+/** GBP Performance KPIs for one location (or the roll-up across many). */
+export interface LocationKPIs {
+  views: number;
+  calls: number;
+  directions: number;
+  website_clicks: number;
+}
+
+/** One location as rendered on the command-center map. */
+export interface LocationSummary {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  /** 0–100 profile optimization grade. */
+  health_score: number;
+  kpis: LocationKPIs;
+}
+
+/** Response shape of `GET /clients/{id}/command-center` (P1E-2). */
+export interface CommandCenterData {
+  client_id: string;
+  total_locations: number;
+  /** Arithmetic sum of KPIs across all locations in the portfolio. */
+  rollup: LocationKPIs;
+  locations: LocationSummary[];
 }

@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.api.v1.auth import router as auth_router
 from app.api.v1.connections import router as connections_router
 from app.api.v1.entitlements import router as entitlements_router
+from app.api.v1.locations import router as locations_router
 from app.api.v1.quotas import router as quotas_router
 from app.api.v1.users import router as users_router
 
@@ -13,3 +14,4 @@ api_router.include_router(users_router)
 api_router.include_router(entitlements_router)
 api_router.include_router(quotas_router)
 api_router.include_router(connections_router)
+api_router.include_router(locations_router)
