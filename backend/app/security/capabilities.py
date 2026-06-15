@@ -86,6 +86,7 @@ _ADMIN: frozenset[str] = frozenset(
         "users.assign_role",
         "connections.proxy",
         "entitlements.override",
+        "entitlements.preview",
         "protection.configure",
         "automation.configure",
         "webhooks.manage",

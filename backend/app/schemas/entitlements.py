@@ -45,3 +45,11 @@ class FeatureOut(BaseModel):
     name: str
     dependencies: list[str]
     default_state: bool
+
+
+class ClientPreviewResponse(BaseModel):
+    """The resolved entitlement set as seen by a given role (``GET /clients/{id}/preview``)."""
+
+    client_id: UUID
+    role: str
+    features: list[ResolvedFeatureOut]

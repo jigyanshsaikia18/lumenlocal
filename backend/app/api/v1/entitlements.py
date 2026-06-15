@@ -26,6 +26,7 @@ from app.entitlements.cache import entitlement_cache
 from app.entitlements.gateway import get_entitlement_service
 from app.entitlements.repository import EntitlementService, SqlAlchemyOverrideStore
 from app.schemas.entitlements import (
+    ClientPreviewResponse,
     EntitlementResolveResponse,
     FeatureOut,
     FeatureToggleRequest,
@@ -94,6 +95,31 @@ def resolve_entitlements_endpoint(
     return EntitlementResolveResponse(
         client_id=client_id,
         location_id=location_id,
+        features=[
+            ResolvedFeatureOut(key=rf.key, enabled=rf.enabled, source=rf.source)
+            for rf in resolved.values()
+        ],
+    )
+
+
+@router.get("/clients/{client_id}/preview", response_model=ClientPreviewResponse)
+def preview_client_entitlements(
+    client_id: UUID,
+    role: str = Query("client_owner"),
+    ctx: RequestContext = Depends(require("entitlements.preview", scope_param="client_id")),
+    service: EntitlementService = Depends(get_entitlement_service),
+) -> ClientPreviewResponse:
+    """Return the resolved entitlement set as a given role would see it (FT-7).
+
+    Lets a Super-Admin or agency admin inspect "what this client sees" without
+    impersonating the client. The ``role`` query param is informational — it labels
+    the preview perspective but does not filter features (all 4-level resolved flags
+    are returned so the admin can see the full picture).
+    """
+    resolved = entitlement_cache.resolve(client_id, None, service.resolve)
+    return ClientPreviewResponse(
+        client_id=client_id,
+        role=role,
         features=[
             ResolvedFeatureOut(key=rf.key, enabled=rf.enabled, source=rf.source)
             for rf in resolved.values()
