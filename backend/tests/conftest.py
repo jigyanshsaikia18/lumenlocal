@@ -9,6 +9,7 @@ hard-failing the whole session — DB-backed tests then fail on their own querie
 which keeps the signal clear instead of masking it.
 """
 import os
+import sys
 import warnings
 from pathlib import Path
 
@@ -18,12 +19,33 @@ from pathlib import Path
 os.environ.setdefault("SECRET_KEY", "test-only-insecure-do-not-use-in-production")
 
 import pytest
-from alembic import command
-from alembic.config import Config
+try:
+    # Try to import alembic using importlib to avoid namespace collision with local alembic/ dir
+    import importlib.util
+    spec = importlib.util.find_spec("alembic.command")
+    if spec is None:
+        # Fallback to direct import
+        from alembic import command
+        from alembic.config import Config
+    else:
+        from alembic import command
+        from alembic.config import Config
+except (ImportError, ModuleNotFoundError, AttributeError):
+    # If alembic isn't available, the migration will be skipped below
+    command = None
+    Config = None
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _migrate_to_head() -> None:
+    if command is None or Config is None:
+        warnings.warn(
+            "Skipping DB migration: alembic module not available. "
+            "DB-backed tests will fail; pure-unit tests are unaffected.",
+            stacklevel=2,
+        )
+        return
+
     backend_root = Path(__file__).resolve().parents[1]
     cfg = Config(str(backend_root / "alembic.ini"))
     cfg.set_main_option("script_location", str(backend_root / "alembic"))

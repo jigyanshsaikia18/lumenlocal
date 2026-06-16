@@ -4,6 +4,7 @@ from app.models.compliance import ComplianceEvent, PolicyRuleset
 from app.models.connection import GbpConnection
 from app.models.feature import ClientFeature, Feature, LocationFeature, PlanFeature
 from app.models.geo_ai import GeoAiScan
+from app.models.geo_prompt import GeoPrompt
 from app.models.geogrid import GeogridScan
 from app.models.location import Location
 from app.models.plan import Plan
@@ -21,6 +22,7 @@ __all__ = [
     "Feature",
     "GbpConnection",
     "GeoAiScan",
+    "GeoPrompt",
     "GeogridScan",
     "KeywordRankResult",
     "KeywordRankSchedule",
