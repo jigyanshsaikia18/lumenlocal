@@ -10,10 +10,10 @@ import {
   YAxis,
 } from "recharts";
 
-import type { SoLVDataPoint } from "@/lib/ranking/types";
+import type { SAIVDataPoint } from "@/lib/geo/types";
 
-interface SoLVHistoryChartProps {
-  data: SoLVDataPoint[];
+interface SAIVHistoryChartProps {
+  data: SAIVDataPoint[];
   /** Chart height in px (default 220). */
   height?: number;
 }
@@ -24,10 +24,10 @@ function shortDate(iso: string) {
 }
 
 /**
- * Line chart of Share of Local Voice (SoLV) over time.
- * Uses recharts for interactivity. Gated by the parent widget.
+ * Line chart of AI-Search Visibility (SAIV) over time.
+ * Mirrors SoLVHistoryChart so the two scores read alike on the dashboard.
  */
-export function SoLVHistoryChart({ data, height = 220 }: SoLVHistoryChartProps) {
+export function SAIVHistoryChart({ data, height = 220 }: SAIVHistoryChartProps) {
   const chartData = data.map((d) => ({ ...d, dateLabel: shortDate(d.date) }));
 
   return (
@@ -49,7 +49,7 @@ export function SoLVHistoryChart({ data, height = 220 }: SoLVHistoryChartProps) 
           tickFormatter={(v: number) => `${v}%`}
         />
         <Tooltip
-          formatter={(value) => [`${value}%`, "SoLV"]}
+          formatter={(value) => [`${value}%`, "SAIV"]}
           labelStyle={{ color: "var(--color-foreground, #111827)", fontWeight: 600 }}
           contentStyle={{
             borderRadius: 8,
@@ -59,8 +59,8 @@ export function SoLVHistoryChart({ data, height = 220 }: SoLVHistoryChartProps) 
         />
         <Line
           type="monotone"
-          dataKey="solv"
-          stroke="#2563eb"
+          dataKey="saiv"
+          stroke="#7c3aed"
           strokeWidth={2}
           dot={false}
           activeDot={{ r: 4, strokeWidth: 0 }}
