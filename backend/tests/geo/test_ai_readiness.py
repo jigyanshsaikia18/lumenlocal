@@ -125,3 +125,22 @@ def test_stale_post_is_flagged_with_day_count():
     report = audit_ai_readiness({"last_post_at": "2026-05-07"}, now=NOW)
     post = next(r for r in report.recommendations if r.signal == "post_freshness")
     assert "40 days ago" in post.action
+
+
+def test_malformed_profile_cannot_exceed_100():
+    """Untrusted profile_data_live (rating>5, answered>total) must stay clamped 0..100.
+
+    Regression for the score-overflow defect: per-signal scores are clamped so a
+    malformed JSONB profile can never push a signal — or the weighted overall —
+    above 100 (or below 0).
+    """
+    malformed = {
+        "primary_category": "Cafe",
+        "secondary_categories": ["a", "b"],
+        "reviews": {"count": 1000, "average_rating": 9, "last_review_at": "2026-06-15"},
+        "qanda": {"answered": 50, "total": 1},
+    }
+    report = audit_ai_readiness(malformed, now=NOW)
+    assert 0.0 <= report.overall_score <= 100.0
+    for s in report.signals:
+        assert 0.0 <= s.score <= 100.0, f"{s.key} score out of range: {s.score}"

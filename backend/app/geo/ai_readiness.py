@@ -353,6 +353,10 @@ def audit_ai_readiness(
     scored: list[SignalScore] = []
     for sig in signals:
         score, detail, action = sig.scorer(profile, now)
+        # Clamp to [0, 100]: profile_data_live is untrusted JSONB, and malformed
+        # values (e.g. rating > 5, answered > total) must not push a signal — and
+        # thus the weighted overall — past 100 and break the 0..100 invariant.
+        score = min(100.0, max(0.0, score))
         scored.append(
             SignalScore(
                 key=sig.key,
