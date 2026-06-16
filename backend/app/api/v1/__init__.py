@@ -1,6 +1,7 @@
 """API v1 router — mounts all v1 sub-routers."""
 from fastapi import APIRouter
 
+from app.api.v1.ai_readiness import router as ai_readiness_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.connections import router as connections_router
@@ -18,4 +19,5 @@ api_router.include_router(quotas_router)
 api_router.include_router(connections_router)
 api_router.include_router(locations_router)
 api_router.include_router(rank_tracking_router)
+api_router.include_router(ai_readiness_router)
 api_router.include_router(audit_router)
