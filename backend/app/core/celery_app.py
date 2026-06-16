@@ -18,6 +18,7 @@ celery_app = Celery(
     include=[
         "app.jobs.example",
         "app.jobs.geo_scan",
+        "app.jobs.geo_ai_scan",
         "app.jobs.token_health",
         "app.jobs.keyword_rank_scan",
         "app.jobs.keyword_rank_dispatch",
