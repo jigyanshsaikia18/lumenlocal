@@ -116,9 +116,10 @@ def _build_app(*, feature_enabled: bool, principal_role: str) -> FastAPI:
     client_overrides = {} if feature_enabled else {None: {GEO_PROMPTS_FEATURE: False}}
     backend = FakeEntitlementBackend(_FEATURES, client=client_overrides)
 
+    prompt_service = _FakeGeoPromptService()
     app.dependency_overrides[get_request_context] = lambda: _principal(TENANT_1_ID, principal_role)
     app.dependency_overrides[get_entitlement_service] = lambda: EntitlementService(backend)
-    app.dependency_overrides[get_geo_prompt_service] = _FakeGeoPromptService
+    app.dependency_overrides[get_geo_prompt_service] = lambda: prompt_service
 
     return app
 

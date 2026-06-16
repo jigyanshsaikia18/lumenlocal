@@ -50,16 +50,15 @@ def upgrade() -> None:
         ("{hair_type} specialist {area}", "salon"),
     ]
 
+    bind = op.get_bind()
+    stmt = sa.text(
+        """
+        INSERT INTO geo_prompts (niche, prompt, is_custom, tenant_id)
+        VALUES (:niche, :prompt, false, NULL)
+        """
+    )
     for prompt_text, niche in default_prompts:
-        op.execute(
-            sa.text(
-                """
-                INSERT INTO geo_prompts (niche, prompt, is_custom, tenant_id)
-                VALUES (:niche, :prompt, false, NULL)
-                """
-            ),
-            {"niche": niche, "prompt": prompt_text},
-        )
+        bind.execute(stmt, {"niche": niche, "prompt": prompt_text})
 
 
 def downgrade() -> None:

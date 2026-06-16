@@ -25,13 +25,13 @@ class OverrideStore(Protocol):
 
     def feature_registry(self) -> list[FeatureDef]: ...
 
-    def plan_id_for_client(self, client_id: UUID) -> UUID | None: ...
+    def plan_id_for_client(self, client_id: UUID | None) -> UUID | None: ...
 
     def client_id_for_location(self, location_id: UUID | None) -> UUID | None: ...
 
     def plan_overrides(self, plan_id: UUID | None) -> dict[str, bool]: ...
 
-    def client_overrides(self, client_id: UUID) -> dict[str, bool]: ...
+    def client_overrides(self, client_id: UUID | None) -> dict[str, bool]: ...
 
     def location_overrides(self, location_id: UUID | None) -> dict[str, bool]: ...
 
@@ -61,7 +61,9 @@ class SqlAlchemyOverrideStore:
             for r in rows
         ]
 
-    def plan_id_for_client(self, client_id: UUID) -> UUID | None:
+    def plan_id_for_client(self, client_id: UUID | None) -> UUID | None:
+        if client_id is None:
+            return None
         return self._session.execute(
             text(
                 "SELECT t.plan_id FROM clients c "
@@ -91,7 +93,7 @@ class SqlAlchemyOverrideStore:
     def plan_overrides(self, plan_id: UUID | None) -> dict[str, bool]:
         return self._overrides("plan_features", plan_id)
 
-    def client_overrides(self, client_id: UUID) -> dict[str, bool]:
+    def client_overrides(self, client_id: UUID | None) -> dict[str, bool]:
         return self._overrides("client_features", client_id)
 
     def location_overrides(self, location_id: UUID | None) -> dict[str, bool]:
@@ -109,7 +111,7 @@ class EntitlementService:
         return self._store.feature_registry()
 
     def resolve(
-        self, client_id: UUID, location_id: UUID | None = None
+        self, client_id: UUID | None, location_id: UUID | None = None
     ) -> dict[str, ResolvedFeature]:
         """Load the four layers for this scope and resolve them (precedence + deps)."""
         plan_id = self._store.plan_id_for_client(client_id)
@@ -122,7 +124,7 @@ class EntitlementService:
 
     # Convenience for callers that only need the boolean view.
     def is_enabled(
-        self, feature_key: str, client_id: UUID, location_id: UUID | None = None
+        self, feature_key: str, client_id: UUID | None, location_id: UUID | None = None
     ) -> bool:
         resolved = self.resolve(client_id, location_id)
         rf = resolved.get(feature_key)

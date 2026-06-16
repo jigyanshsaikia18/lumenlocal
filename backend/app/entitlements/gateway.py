@@ -78,6 +78,10 @@ def require_feature(
     from ``client_param`` and, when given, the specific location from
     ``location_param``. A disabled feature raises ``403 feature_disabled``; the
     passing ``RequestContext`` is returned for the handler to reuse.
+
+    Pass ``client_param=None, location_param=None`` for account-wide routes that
+    have no client/location in their path (e.g. ``/geo-prompts``) — entitlements
+    then resolve against the global plan/registry only (no client-level override).
     """
     # Run the capability check first so the chain order (RBAC → entitlement) holds.
     # ``require`` scopes its grant check to the client when we have one in the path.
@@ -96,8 +100,8 @@ def require_feature(
         location_id = _uuid_param(request, location_param)
         if client_id is None:
             client_id = service.client_id_for_location(location_id)
-        if client_id is None:
-            # Misconfigured route: a feature gate needs a resolvable client scope.
+        if client_id is None and (client_param is not None or location_param is not None):
+            # Misconfigured route: a scope param was declared but didn't resolve.
             raise APIError(
                 500, "scope_unresolved", "Could not resolve client scope for entitlement check"
             )

@@ -31,9 +31,10 @@ from app.core.config import settings
 from app.entitlements.resolver import ResolvedFeature
 
 # (client_id, location_id) — location_id is None for client-scope resolution.
-CacheKey = tuple[UUID, UUID | None]
+# client_id itself is None for account-wide (unscoped) routes like /geo-prompts.
+CacheKey = tuple[UUID | None, UUID | None]
 Resolved = dict[str, ResolvedFeature]
-Loader = Callable[[UUID, UUID | None], Resolved]
+Loader = Callable[[UUID | None, UUID | None], Resolved]
 
 
 class TtlEntitlementCache:
@@ -52,7 +53,7 @@ class TtlEntitlementCache:
         self._entries: dict[CacheKey, tuple[float, Resolved]] = {}
 
     def resolve(
-        self, client_id: UUID, location_id: UUID | None, loader: Loader
+        self, client_id: UUID | None, location_id: UUID | None, loader: Loader
     ) -> Resolved:
         """Return the cached resolved set, refreshing via ``loader`` past the TTL."""
         key: CacheKey = (client_id, location_id)

@@ -32,7 +32,9 @@ def get_geo_prompt_service(db: Session = Depends(get_db)) -> GeoPromptService:
 @router.get("/geo-prompts", response_model=GeoPromptsListOut)
 def list_geo_prompts(
     niche: str | None = None,
-    ctx: RequestContext = Depends(require_feature(GEO_PROMPTS_FEATURE, "geo_prompts.read")),
+    ctx: RequestContext = Depends(
+        require_feature(GEO_PROMPTS_FEATURE, "geo_prompts.read", client_param=None)
+    ),
     service: GeoPromptService = Depends(get_geo_prompt_service),
 ) -> GeoPromptsListOut:
     """List default + custom prompts visible to the tenant.
@@ -57,7 +59,9 @@ def list_geo_prompts(
 @router.post("/geo-prompts", response_model=GeoPromptOut, status_code=201)
 def create_geo_prompt(
     payload: GeoPromptCreateIn,
-    ctx: RequestContext = Depends(require_feature(GEO_PROMPTS_FEATURE, "geo_prompts.write")),
+    ctx: RequestContext = Depends(
+        require_feature(GEO_PROMPTS_FEATURE, "geo_prompts.write", client_param=None)
+    ),
     service: GeoPromptService = Depends(get_geo_prompt_service),
 ) -> GeoPromptOut:
     """Add a custom prompt to the tenant's library.
