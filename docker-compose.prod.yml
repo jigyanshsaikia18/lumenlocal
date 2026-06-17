@@ -1,0 +1,108 @@
+# Full MVP stack — `docker compose -f docker-compose.prod.yml up -d --build`
+# brings up Postgres, Redis, runs DB migrations once, then the API, Celery
+# worker + beat, and the Next.js frontend (the only publicly exposed service).
+#
+# Secrets/config come from the repo-root .env (copy .env.example first and set a
+# real SECRET_KEY + passwords). Connection hosts are overridden here to the
+# compose network service names, so .env keeps its localhost defaults.
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lumen}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lumen_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-lumenlocal}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lumen} -d ${POSTGRES_DB:-lumenlocal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: provisions the schema + the RLS-scoped `lumen_app` role, then exits.
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lumen}:${POSTGRES_PASSWORD:-lumen_dev_password}@postgres:5432/${POSTGRES_DB:-lumenlocal}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: [.env]
+    environment: &backend_env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lumen}:${POSTGRES_PASSWORD:-lumen_dev_password}@postgres:5432/${POSTGRES_DB:-lumenlocal}
+      # App role password is set by the tenant_isolation_rls migration. Rotate both
+      # there and here before a real production launch (see DEPLOY_MVP.md).
+      APP_DATABASE_URL: postgresql+psycopg://lumen_app:lumen_app_dev_password@postgres:5432/${POSTGRES_DB:-lumenlocal}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    env_file: [.env]
+    environment: *backend_env
+    command: ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  beat:
+    build: ./backend
+    restart: unless-stopped
+    env_file: [.env]
+    environment: *backend_env
+    command: ["celery", "-A", "app.core.celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    # Server-side proxy target for the app's /api/v1 calls (see next.config.js).
+    environment:
+      API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-80}:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  redisdata:

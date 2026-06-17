@@ -1,4 +1,5 @@
-# Optional: lets the backend be containerized later. Default dev runs uvicorn on host.
+# Production image for the API, Celery worker/beat, and one-shot migrations.
+# Dev still runs uvicorn on the host; this image is for hosting.
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -13,6 +14,8 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --no-root --without dev
 
 COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

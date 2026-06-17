@@ -1,0 +1,17 @@
+[Unit]
+Description=LumenLocal Celery beat scheduler
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=lumenlocal
+Group=lumenlocal
+WorkingDirectory=/opt/lumenlocal/backend
+EnvironmentFile=/opt/lumenlocal/backend/.env
+ExecStart=/opt/lumenlocal/backend/.venv/bin/celery -A app.core.celery_app beat --loglevel=info
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
