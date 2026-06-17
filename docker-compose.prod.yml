@@ -93,9 +93,14 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      # Baked into the route manifest at build time (Next.js evaluates rewrites()
+      # during `next build`); the runtime env var alone is not enough.
+      args:
+        API_PROXY_TARGET: http://backend:8000
     restart: unless-stopped
-    # Server-side proxy target for the app's /api/v1 calls (see next.config.js).
+    # Kept for parity / any runtime reads; the build arg above is what proxies /api/v1.
     environment:
       API_PROXY_TARGET: http://backend:8000
     ports:
