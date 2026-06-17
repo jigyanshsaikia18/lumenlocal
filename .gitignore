@@ -27,6 +27,7 @@ build/
 .env.*
 !.env.example
 !.env.local.example
+!.env.prod.example
 frontend/.env.local
 
 # ---- Editors / OS ----

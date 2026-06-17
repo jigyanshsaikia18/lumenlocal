@@ -1,0 +1,13 @@
+# Caddy reverse proxy for the public MVP deploy.
+# Caddy obtains + renews a Let's Encrypt cert automatically for $DOMAIN (the
+# domain's A record must already point at this VPS before first start).
+# All traffic terminates TLS here and is proxied to the Next.js frontend, which
+# in turn proxies /api/v1/* to the backend on the internal compose network.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy frontend:3000
+}

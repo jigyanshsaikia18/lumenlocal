@@ -1,0 +1,129 @@
+# Public VPS deploy — Caddy terminates HTTPS for $DOMAIN and proxies to the
+# Next.js frontend; the frontend proxies /api/v1 to the backend internally.
+# Nothing but Caddy (80/443) is published to the host.
+#
+#   docker compose -f docker-compose.vps.yml up -d --build
+#
+# Reads the repo-root .env (copy .env.prod.example -> .env on the server and set
+# DOMAIN, ACME_EMAIL, a real SECRET_KEY, and strong POSTGRES_PASSWORD /
+# APP_DB_PASSWORD). See DEPLOY_MVP.md for the full runbook.
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lumen}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a strong POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-lumenlocal}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lumen} -d ${POSTGRES_DB:-lumenlocal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: schema migrations, then rotate the RLS app-role password to APP_DB_PASSWORD.
+  migrate:
+    build: ./backend
+    command: ["sh", "-c", "alembic upgrade head && python -m scripts.rotate_app_role"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lumen}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lumenlocal}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set a strong APP_DB_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: [.env]
+    environment: &backend_env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lumen}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lumenlocal}
+      APP_DATABASE_URL: postgresql+psycopg://lumen_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-lumenlocal}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    env_file: [.env]
+    environment: *backend_env
+    command: ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  beat:
+    build: ./backend
+    restart: unless-stopped
+    env_file: [.env]
+    environment: *backend_env
+    command: ["celery", "-A", "app.core.celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Internal compose-network target baked into the Next.js route manifest.
+        API_PROXY_TARGET: http://backend:8000
+    restart: unless-stopped
+    # Not published — only Caddy reaches it, over the internal network.
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set your domain in .env, e.g. demo.example.com}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env for Let's Encrypt}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - frontend
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:
